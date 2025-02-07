@@ -1,28 +1,26 @@
-![Screenshot](https://i.imgur.com/MmPrQqx.png)
-
 # xSkins: External Knife & Skin Changer for CSGO
 
 ## Features
 
-- Optimized and faster than any other external skin changer
-- Self-updates using an external memory library: [xLiteMem](https://github.com/0xf1a/xLiteMem)
-- Small console menu for selecting knife models and skins
-- Parser for loading skin values from a .txt file
+- **Optimized Performance**: Faster and more efficient than other external skin changers.
+- **Self-Updating**: Utilizes the external memory library [xLiteMem](https://github.com/0xf1a/xLiteMem) for automatic updates.
+- **Console Menu**: A compact, easy-to-use console menu for selecting knife models and skins.
+- **Skin Loader**: Load skin values directly from a `.txt` file with the integrated parser.
 
-## How it works
+## How It Works
 
-The m_hMyWeapons array contains handles to all weapons equipped by the local player. We can apply skin and model values to those weapons' entities independent to which weapon the local player is holding in hands. This alone perfectly applies skins and models without having to write memory to the fullupdate offset. Lastly, the current weapon viewmodel entity is set to the model index of our chosen knife model.
+The `m_hMyWeapons` array stores handles to all weapons equipped by the local player. By applying skin and model values to these weapon entities, we can change skins and models without worrying about which weapon the player is currently holding. This method ensures smooth application of skins without needing to modify the `fullupdate` offset. Finally, the viewmodel entity of the current weapon is set to the model index of the selected knife model.
 
-## Fix for strings in VS2017+
+## Fix for Visual Studio 2017+ Compatibility
 
-Visual Studio 2017 15.5 started setting the /permissive- flag for all new solutions, which disallows the implicit conversion of string literals to non-const char*. You can edit the solution's properties to disable that flag while you update your codebase to conform to the C++ standard. It's listed as "Conformance mode" in the "Language" tab under "C/C++" in the project's properties.
+Visual Studio 2017 (version 15.5 and later) introduced the `/permissive-` flag, which disallows implicit conversions from string literals to non-const `char*`. To resolve this, you can disable this flag in the project properties while you update your code to conform to the C++ standard. This setting is found under "Conformance mode" in the "Language" tab under "C/C++" in your project's properties.
 
 ## Credits
 
-- BuckshotYT for [GetModelIndex method](https://www.unknowncheats.me/forum/counterstrike-global-offensive/212036-model-indices-properly-externally.html)
-- tracersgta for [formatted skin names](https://www.unknowncheats.me/forum/counterstrike-global-offensive/300854-skin-list-ids-comments.html)
-- adamb70 for [up to date skin dumps](https://github.com/adamb70/CSGO-skin-ID-dumper/)
+- **BuckshotYT** for the [GetModelIndex method](https://www.unknowncheats.me/forum/counterstrike-global-offensive/212036-model-indices-properly-externally.html)
+- **tracersgta** for the [formatted skin names](https://www.unknowncheats.me/forum/counterstrike-global-offensive/300854-skin-list-ids-comments.html)
+- **adamb70** for the [up-to-date skin dumps](https://github.com/adamb70/CSGO-skin-ID-dumper/)
 
-## Important
+## Important Disclaimer
 
-I'm not responsible for any bans that might occur on your account while using this software. Use at your own risk.
+Use this software at your own risk. I am not responsible for any potential bans or account issues that may arise from using this tool.
