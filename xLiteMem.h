@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <tchar.h>
+#include <string>
 
 // Expand byte pattern
 #define EXP(x) x, sizeof(x) - 1
@@ -25,285 +26,305 @@
 /*
 ** WinAPI process and memory wrappers
 */
-DWORD GetProcessIdByProcessName(LPCTSTR lpName)
+
+DWORD GetProcessIdByProcessName(const std::wstring& lpName)
 {
-	DWORD dwPid = 0;
+    DWORD dwPid = 0;
 
-	do
-	{
-		HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (hSnapshot == INVALID_HANDLE_VALUE) { continue; }
+    while (dwPid == 0)
+    {
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hSnapshot == INVALID_HANDLE_VALUE) continue;
 
-		PROCESSENTRY32 ProcessEntry32;
-		ProcessEntry32.dwSize = sizeof(PROCESSENTRY32);
+        PROCESSENTRY32 ProcessEntry32{ sizeof(PROCESSENTRY32) };
 
-		if (Process32First(hSnapshot, &ProcessEntry32))
-		{
-			do
-			{
-				if (_tcsicmp(ProcessEntry32.szExeFile, lpName) == 0)
-				{
-					dwPid = ProcessEntry32.th32ProcessID;
-					break;
-				}
-			} while (Process32Next(hSnapshot, &ProcessEntry32));
-		}
+        if (Process32First(hSnapshot, &ProcessEntry32))
+        {
+            do
+            {
+                if (_wcsicmp(ProcessEntry32.szExeFile, lpName.c_str()) == 0)
+                {
+                    dwPid = ProcessEntry32.th32ProcessID;
+                    break;
+                }
+            } while (Process32Next(hSnapshot, &ProcessEntry32));
+        }
 
-		CloseHandle(hSnapshot);
-	} while (!dwPid);
+        CloseHandle(hSnapshot);
+    }
 
-	return dwPid;
+    return dwPid;
 }
-DWORD GetProcessIdByWindowName(LPCTSTR lpName)
+
+DWORD GetProcessIdByWindowName(const std::wstring& lpName)
 {
-	DWORD dwPid = 0;
+    DWORD dwPid = 0;
 
-	do {
-		HWND hWindow = FindWindow(NULL, lpName);
-		if (!hWindow) { continue; }
-		GetWindowThreadProcessId(hWindow, &dwPid);
-		if (hWindow) { CloseHandle(hWindow); }
-	} while (!dwPid);
+    while (dwPid == 0)
+    {
+        HWND hWindow = FindWindow(NULL, lpName.c_str());
+        if (hWindow)
+        {
+            GetWindowThreadProcessId(hWindow, &dwPid);
+            CloseHandle(hWindow);
+        }
+    }
 
-	return dwPid;
+    return dwPid;
 }
-DWORD GetModuleBaseAddress(DWORD dwPid, LPCTSTR lpName)
+
+DWORD GetModuleBaseAddress(DWORD dwPid, const std::wstring& lpName)
 {
-	DWORD dwBase = 0;
+    DWORD dwBase = 0;
 
-	do {
-		HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwPid);
-		if (hSnapshot == INVALID_HANDLE_VALUE) { continue; }
+    while (dwBase == 0)
+    {
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwPid);
+        if (hSnapshot == INVALID_HANDLE_VALUE) continue;
 
-		MODULEENTRY32 ModuleEntry32;
-		ModuleEntry32.dwSize = sizeof(MODULEENTRY32);
+        MODULEENTRY32 ModuleEntry32{ sizeof(MODULEENTRY32) };
 
-		if (Module32First(hSnapshot, &ModuleEntry32))
-		{
-			do
-			{
-				if (_tcsicmp(ModuleEntry32.szModule, lpName) == 0)
-				{
-					dwBase = (DWORD)ModuleEntry32.modBaseAddr;
-					break;
-				}
-			} while (Module32Next(hSnapshot, &ModuleEntry32));
-		}
+        if (Module32First(hSnapshot, &ModuleEntry32))
+        {
+            do
+            {
+                if (_wcsicmp(ModuleEntry32.szModule, lpName.c_str()) == 0)
+                {
+                    dwBase = (DWORD)ModuleEntry32.modBaseAddr;
+                    break;
+                }
+            } while (Module32Next(hSnapshot, &ModuleEntry32));
+        }
 
-		CloseHandle(hSnapshot);
-	} while (!dwBase);
+        CloseHandle(hSnapshot);
+    }
 
-	return dwBase;
+    return dwBase;
 }
-DWORD GetModuleSize(DWORD dwPid, LPCTSTR lpName)
+
+DWORD GetModuleSize(DWORD dwPid, const std::wstring& lpName)
 {
-	DWORD dwSize = 0;
+    DWORD dwSize = 0;
 
-	do {
-		HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwPid);
-		if (hSnapshot == INVALID_HANDLE_VALUE) { continue; }
+    while (dwSize == 0)
+    {
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwPid);
+        if (hSnapshot == INVALID_HANDLE_VALUE) continue;
 
-		MODULEENTRY32 ModuleEntry32;
-		ModuleEntry32.dwSize = sizeof(MODULEENTRY32);
+        MODULEENTRY32 ModuleEntry32{ sizeof(MODULEENTRY32) };
 
-		if (Module32First(hSnapshot, &ModuleEntry32))
-		{
-			do
-			{
-				if (_tcsicmp(ModuleEntry32.szModule, lpName) == 0)
-				{
-					dwSize = ModuleEntry32.modBaseSize;
-					break;
-				}
-			} while (Module32Next(hSnapshot, &ModuleEntry32));
-		}
+        if (Module32First(hSnapshot, &ModuleEntry32))
+        {
+            do
+            {
+                if (_wcsicmp(ModuleEntry32.szModule, lpName.c_str()) == 0)
+                {
+                    dwSize = ModuleEntry32.modBaseSize;
+                    break;
+                }
+            } while (Module32Next(hSnapshot, &ModuleEntry32));
+        }
 
-		CloseHandle(hSnapshot);
-	} while (!dwSize);
+        CloseHandle(hSnapshot);
+    }
 
-	return dwSize;
+    return dwSize;
 }
+
 PVOID ReadMemory(HANDLE hProcess, DWORD dwAddr, LPVOID lpBuffer, DWORD dwSize)
 {
-	PVOID ret = 0;
-	BOOL status = ReadProcessMemory(hProcess, (LPCVOID)(dwAddr), lpBuffer ? lpBuffer : &ret, dwSize, NULL);
-	return lpBuffer ? (PVOID)status : ret;
+    PVOID ret = nullptr;
+    BOOL status = ReadProcessMemory(hProcess, (LPCVOID)(dwAddr), lpBuffer ? lpBuffer : &ret, dwSize, NULL);
+    return lpBuffer ? (PVOID)status : ret;
 }
+
 BOOL WriteMemory(HANDLE hProcess, DWORD dwAddr, LPCVOID lpBuffer, DWORD dwSize)
 {
-	return WriteProcessMemory(hProcess, (LPVOID)(dwAddr), lpBuffer, dwSize, NULL);
+    return WriteProcessMemory(hProcess, (LPVOID)(dwAddr), lpBuffer, dwSize, NULL);
 }
 
 /*
 ** Offset scanning functions
 */
+
 BOOLEAN CheckPattern(PBYTE pbBytes, PBYTE pbPattern, UINT uLength, UCHAR bWildcard)
 {
-	for (UINT i = 0; i < uLength; i++)
-	{
-		if (pbPattern[i] != bWildcard && pbBytes[i] != pbPattern[i])
-		{
-			return FALSE;
-		}
-	}
+    for (UINT i = 0; i < uLength; i++)
+    {
+        if (pbPattern[i] != bWildcard && pbBytes[i] != pbPattern[i])
+        {
+            return FALSE;
+        }
+    }
 
-	return TRUE;
+    return TRUE;
 }
+
 DWORD FindPattern(PBYTE pbBuffer, DWORD dwBase, DWORD dwSize, PBYTE pbPattern, UINT uLength,
-	UCHAR bWildcard, UINT uOffset, UINT uExtra, BOOLEAN bRelative, BOOLEAN bSubtract)
+    UCHAR bWildcard, UINT uOffset, UINT uExtra, BOOLEAN bRelative, BOOLEAN bSubtract)
 {
-	DWORD dwAddress = 0;
+    DWORD dwAddress = 0;
 
-	for (DWORD i = 0; i < dwSize - uLength; i++)
-	{
-		if (CheckPattern(pbBuffer + i, pbPattern, uLength, bWildcard))
-		{
-			dwAddress = dwBase + i + uOffset;
+    for (DWORD i = 0; i < dwSize - uLength; i++)
+    {
+        if (CheckPattern(pbBuffer + i, pbPattern, uLength, bWildcard))
+        {
+            dwAddress = dwBase + i + uOffset;
 
-			if (bRelative)
-			{
-				dwAddress = *(DWORD*)(pbBuffer + i + uOffset);
-			}
+            if (bRelative)
+            {
+                dwAddress = *(DWORD*)(pbBuffer + i + uOffset);
+            }
 
-			if (bSubtract)
-			{
-				dwAddress -= dwBase;
-			}
+            if (bSubtract)
+            {
+                dwAddress -= dwBase;
+            }
 
-			dwAddress += uExtra;
-			break;
-		}
-	}
+            dwAddress += uExtra;
+            break;
+        }
+    }
 
-	return dwAddress;
+    return dwAddress;
 }
+
 DWORD ChunkFindPattern(HANDLE hProcess, DWORD dwBase, DWORD dwSize, DWORD dwChunkSize, PBYTE pbPattern,
-	UINT uLength, UCHAR bWildcard, UINT uOffset, UINT uExtra, BOOLEAN bRelative, BOOLEAN bSubtract)
+    UINT uLength, UCHAR bWildcard, UINT uOffset, UINT uExtra, BOOLEAN bRelative, BOOLEAN bSubtract)
 {
-	// both variables start from 0x1000 in order to skip PE header
-	DWORD x = 0x1000; // counter variable
-	DWORD i = dwBase + 0x1000; // current virtual address
-	DWORD dwAddress = 0;
+    DWORD x = 0x1000; // counter variable
+    DWORD i = dwBase + 0x1000; // current virtual address
+    DWORD dwAddress = 0;
 
-	for (; i < dwBase + dwSize; i += dwChunkSize, x += dwChunkSize)
-	{
-		PBYTE pbChunk = (PBYTE)malloc(dwChunkSize); // allocate space for chunk using defined size
-		if (ReadMemory(hProcess, i, pbChunk, dwChunkSize)) // read and scan through current memory chunk
-		{
-			dwAddress = FindPattern(pbChunk,
-				i,
-				dwChunkSize,
-				pbPattern,
-				uLength,
-				bWildcard,
-				uOffset,
-				uExtra,
-				bRelative,
-				bSubtract);
+    for (; i < dwBase + dwSize; i += dwChunkSize, x += dwChunkSize)
+    {
+        PBYTE pbChunk = (PBYTE)malloc(dwChunkSize); // allocate space for chunk using defined size
+        if (ReadMemory(hProcess, i, pbChunk, dwChunkSize)) // read and scan through current memory chunk
+        {
+            dwAddress = FindPattern(pbChunk,
+                i,
+                dwChunkSize,
+                pbPattern,
+                uLength,
+                bWildcard,
+                uOffset,
+                uExtra,
+                bRelative,
+                bSubtract);
 
-			if (dwAddress)
-			{
-				dwAddress += x;
-			}
-		}
-		free(pbChunk);
+            if (dwAddress)
+            {
+                dwAddress += x;
+            }
+        }
+        free(pbChunk);
 
-		if (dwAddress) { break; }
-	}
+        if (dwAddress) { break; }
+    }
 
-	return dwAddress;
+    return dwAddress;
 }
 
 /*
 ** Reversed Source SDK netvar classes
 */
+
 BOOL GetPropName(HANDLE hProcess, DWORD dwAddress, PVOID pBuffer)
 {
-	DWORD dwNameAddr;
-	return ReadMemory(hProcess, dwAddress + m_pVarName, &dwNameAddr, sizeof(DWORD)) &&
-		ReadMemory(hProcess, dwNameAddr, pBuffer, 128);
+    DWORD dwNameAddr;
+    return ReadMemory(hProcess, dwAddress + m_pVarName, &dwNameAddr, sizeof(DWORD)) &&
+        ReadMemory(hProcess, dwNameAddr, pBuffer, 128);
 }
+
 DWORD GetDataTable(HANDLE hProcess, DWORD dwAddress)
 {
-	return (DWORD)ReadMemory(hProcess, dwAddress + m_pDataTable, NULL, sizeof(DWORD));
+    return (DWORD)ReadMemory(hProcess, dwAddress + m_pDataTable, NULL, sizeof(DWORD));
 }
+
 int GetOffset(HANDLE hProcess, DWORD dwAddress)
 {
-	return (int)ReadMemory(hProcess, dwAddress + m_iOffset, NULL, sizeof(int));
+    return (int)ReadMemory(hProcess, dwAddress + m_iOffset, NULL, sizeof(int));
 }
+
 DWORD GetPropById(HANDLE hProcess, DWORD dwAddress, int iIndex)
 {
-	DWORD dwPropAddr = (DWORD)ReadMemory(hProcess, dwAddress + m_pProps, NULL, sizeof(DWORD));
-	return (DWORD)(dwPropAddr + nCRecvPropSize * iIndex);
+    DWORD dwPropAddr = (DWORD)ReadMemory(hProcess, dwAddress + m_pProps, NULL, sizeof(DWORD));
+    return (DWORD)(dwPropAddr + nCRecvPropSize * iIndex);
 }
+
 int GetPropCount(HANDLE hProcess, DWORD dwAddress)
 {
-	return (int)ReadMemory(hProcess, dwAddress + m_nProps, NULL, sizeof(int));
+    return (int)ReadMemory(hProcess, dwAddress + m_nProps, NULL, sizeof(int));
 }
+
 BOOL GetTableName(HANDLE hProcess, DWORD dwAddress, PVOID pBuffer)
 {
-	DWORD dwNameAddr;
-	return ReadMemory(hProcess, dwAddress + m_pNetTableName, &dwNameAddr, sizeof(DWORD)) &&
-		ReadMemory(hProcess, dwNameAddr, pBuffer, 128);
+    DWORD dwNameAddr;
+    return ReadMemory(hProcess, dwAddress + m_pNetTableName, &dwNameAddr, sizeof(DWORD)) &&
+        ReadMemory(hProcess, dwNameAddr, pBuffer, 128);
 }
+
 DWORD GetTable(HANDLE hProcess, DWORD dwAddress)
 {
-	return (DWORD)ReadMemory(hProcess, dwAddress + m_pRecvTable, NULL, sizeof(DWORD));
+    return (DWORD)ReadMemory(hProcess, dwAddress + m_pRecvTable, NULL, sizeof(DWORD));
 }
+
 DWORD GetNextClass(HANDLE hProcess, DWORD dwAddress)
 {
-	return (DWORD)ReadMemory(hProcess, dwAddress + m_pNext, NULL, sizeof(DWORD));
+    return (DWORD)ReadMemory(hProcess, dwAddress + m_pNext, NULL, sizeof(DWORD));
 }
 
 /*
 ** Netvar scanning functions
 */
-DWORD ScanTable(HANDLE hProcess, DWORD dwTableAddr, LPCSTR lpVarName, DWORD dwLevel)
+
+DWORD ScanTable(HANDLE hProcess, DWORD dwTableAddr, const std::string& lpVarName, DWORD dwLevel)
 {
-	for (int i = 0; i < GetPropCount(hProcess, dwTableAddr); i++)
-	{
-		DWORD dwPropAddr = GetPropById(hProcess, dwTableAddr, i);
-		if (!dwPropAddr) { continue; }
+    for (int i = 0; i < GetPropCount(hProcess, dwTableAddr); i++)
+    {
+        DWORD dwPropAddr = GetPropById(hProcess, dwTableAddr, i);
+        if (!dwPropAddr) continue;
 
-		char szPropName[128] = { 0 };
-		if (!GetPropName(hProcess, dwPropAddr, szPropName) || isdigit(szPropName[0]))
-		{
-			continue;
-		}
+        char szPropName[128] = { 0 };
+        if (!GetPropName(hProcess, dwPropAddr, szPropName) || isdigit(szPropName[0]))
+        {
+            continue;
+        }
 
-		int iOffset = GetOffset(hProcess, dwPropAddr);
+        int iOffset = GetOffset(hProcess, dwPropAddr);
 
-		if (_stricmp(szPropName, lpVarName) == 0)
-		{
-			return dwLevel + iOffset;
-		}
+        if (_stricmp(szPropName, lpVarName.c_str()) == 0)
+        {
+            return dwLevel + iOffset;
+        }
 
-		DWORD dwTableAddr = GetDataTable(hProcess, dwPropAddr);
-		if (!dwTableAddr) { continue; }
+        DWORD dwTableAddr = GetDataTable(hProcess, dwPropAddr);
+        if (!dwTableAddr) continue;
 
-		DWORD dwResult = ScanTable(hProcess, dwTableAddr, lpVarName, dwLevel + iOffset);
-		if (dwResult)
-		{
-			return dwResult;
-		}
-	}
+        DWORD dwResult = ScanTable(hProcess, dwTableAddr, lpVarName, dwLevel + iOffset);
+        if (dwResult)
+        {
+            return dwResult;
+        }
+    }
 
-	return 0;
+    return 0;
 }
-DWORD FindNetvar(HANDLE hProcess, DWORD dwStart, LPCSTR lpClassName, LPCSTR lpVarName)
+
+DWORD FindNetvar(HANDLE hProcess, DWORD dwStart, const std::string& lpClassName, const std::string& lpVarName)
 {
-	for (DWORD dwClass = dwStart; dwClass; dwClass = GetNextClass(hProcess, dwClass))
-	{
-		DWORD dwTableAddr = GetTable(hProcess, dwClass);
+    for (DWORD dwClass = dwStart; dwClass; dwClass = GetNextClass(hProcess, dwClass))
+    {
+        DWORD dwTableAddr = GetTable(hProcess, dwClass);
 
-		char szTableName[128] = { 0 };
-		if (!GetTableName(hProcess, dwTableAddr, szTableName)) { continue; }
+        char szTableName[128] = { 0 };
+        if (!GetTableName(hProcess, dwTableAddr, szTableName)) continue;
 
-		if (_stricmp(szTableName, lpClassName) == 0)
-		{
-			return ScanTable(hProcess, dwTableAddr, lpVarName, 0);
-		}
-	}
+        if (_stricmp(szTableName, lpClassName.c_str()) == 0)
+        {
+            return ScanTable(hProcess, dwTableAddr, lpVarName, 0);
+        }
+    }
 
-	return 0;
+    return 0;
 }
